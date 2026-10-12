@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>compute2.0 – เครื่องคำนวณฟิสิกส์และหุ่นยนต์</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --bg: #eceff2;
+    --panel: #ffffff;
+    --ink: #16212c;
+    --muted: #5d6b79;
+    --line: #d3d9df;
+    --accent: #d9480f;
+    --accent-ink: #ffffff;
+    --soft: #f4f6f8;
+    --readout-bg: #16212c;
+    --readout-ink: #f2f5f7;
+    --readout-dim: #9fb0bf;
+    --danger: #b42318;
+    --danger-bg: #fdecea;
+    --font: "IBM Plex Sans Thai", "Noto Sans Thai", "Sarabun", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e151c; --panel: #17212b; --ink: #e8edf1; --muted: #93a2b0; --line: #2a3744;
+      --accent: #ff8a4c; --accent-ink: #1a0d04; --soft: #1d2935;
+      --readout-bg: #0a0f14; --readout-ink: #f2f5f7; --readout-dim: #7f90a0;
+      --danger: #ff8a80; --danger-bg: #3a1a18;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e151c; --panel: #17212b; --ink: #e8edf1; --muted: #93a2b0; --line: #2a3744;
+    --accent: #ff8a4c; --accent-ink: #1a0d04; --soft: #1d2935;
+    --readout-bg: #0a0f14; --readout-ink: #f2f5f7; --readout-dim: #7f90a0;
+    --danger: #ff8a80; --danger-bg: #3a1a18;
+  }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font); font-size: 16px; line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+  }
+  header.top {
+    max-width: 1080px; margin: 0 auto; padding: 20px 16px 8px;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  header.top h1 { margin: 0; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; }
+  header.top p { margin: 2px 0 0; color: var(--muted); font-size: .95rem; }
+  .theme-btn {
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    border-radius: 8px; padding: 8px 12px; font: inherit; font-size: .9rem; cursor: pointer;
+  }
+  main {
+    max-width: 1080px; margin: 0 auto; padding: 8px 16px 40px;
+    display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start;
+  }
+  @media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+
+  .picker { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .picker input[type="search"] {
+    width: 100%; border: 0; border-bottom: 1px solid var(--line); background: var(--panel);
+    color: var(--ink); font: inherit; padding: 12px 14px; outline: none;
+  }
+  .picker input[type="search"]:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+  .list { max-height: 560px; overflow-y: auto; }
+  @media (max-width: 820px) { .list { max-height: 260px; } }
+  .group-title { margin: 0; padding: 10px 14px 4px; font-size: .8rem; font-weight: 600; color: var(--muted); }
+  .item {
+    display: flex; gap: 10px; width: 100%; text-align: left; border: 0; background: transparent;
+    color: var(--ink); font: inherit; font-size: .95rem; padding: 8px 14px; cursor: pointer;
+    border-left: 3px solid transparent;
+  }
+  .item:hover { background: var(--soft); }
+  .item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .item[aria-current="true"] { background: var(--soft); border-left-color: var(--accent); font-weight: 600; }
+  .item .no { color: var(--muted); min-width: 1.6em; }
+  .empty { padding: 16px 14px; color: var(--muted); }
+
+  .work { display: grid; gap: 16px; min-width: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .card h2 { margin: 0 0 2px; font-size: 1.2rem; }
+  .formula { margin: 0 0 14px; color: var(--muted); font-size: .95rem; }
+  .note { margin: 0 0 14px; padding: 8px 12px; background: var(--soft); border-radius: 8px; font-size: .9rem; color: var(--muted); }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 14px; }
+  label.f { display: grid; gap: 4px; font-size: .9rem; }
+  label.f .lab { font-weight: 500; }
+  label.f .sub { color: var(--muted); font-size: .8rem; margin-top: -2px; }
+  .inp {
+    width: 100%; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    border-radius: 8px; padding: 9px 10px; font: inherit; font-size: 1rem;
+  }
+  .inp:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  .btn {
+    border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    font: inherit; font-weight: 600; padding: 10px 18px; cursor: pointer;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .readout { background: var(--readout-bg); color: var(--readout-ink); border-radius: 12px; padding: 18px; }
+  .readout .head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .readout .head span { color: var(--readout-dim); font-size: .9rem; }
+  .copy { background: transparent; color: var(--readout-ink); border: 1px solid #ffffff33; border-radius: 6px; padding: 4px 10px; font: inherit; font-size: .85rem; cursor: pointer; }
+  .copy:focus-visible { outline: 2px solid var(--accent); }
+  .rows { display: grid; gap: 0; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 9px 0; border-top: 1px solid #ffffff1f; }
+  .row:first-child { border-top: 0; }
+  .row .k { color: var(--readout-dim); font-size: .95rem; }
+  .row .v { font-size: 1.15rem; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+  .row .v small { font-weight: 400; color: var(--readout-dim); font-size: .85rem; margin-left: 4px; }
+  .row.main .v { font-size: 2rem; }
+  .placeholder { color: var(--readout-dim); }
+  .error { background: var(--danger-bg); color: var(--danger); border-radius: 8px; padding: 10px 12px; font-weight: 500; }
+
+  .tbl-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; min-width: 380px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: .85rem; }
+  td.n, th.n { text-align: right; }
+  tr.mat { cursor: pointer; }
+  tr.mat:hover { background: var(--soft); }
+  tr.mat:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .hist li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 10px; background: var(--soft); border-radius: 8px; font-size: .9rem; }
+  .hist li span:last-child { font-weight: 600; text-align: right; }
+  .small-link { background: none; border: 0; color: var(--muted); font: inherit; font-size: .85rem; cursor: pointer; text-decoration: underline; padding: 0; }
+  .inline { display: flex; gap: 6px; }
+  .inline .inp:first-child { flex: 1 1 auto; min-width: 0; }
+  .inp.unit { width: auto; flex: 0 0 auto; min-width: 78px; }
+  .runit { background: transparent; color: var(--readout-ink); border: 1px solid #ffffff44; border-radius: 6px; font: inherit; font-size: .85rem; font-weight: 400; margin-left: 6px; padding: 1px 4px; cursor: pointer; }
+  .runit option { color: #16212c; background: #fff; }
+  .runit:focus-visible { outline: 2px solid var(--accent); }
+  .chart svg { width: 100%; height: auto; display: block; touch-action: pan-y; }
+  .ch-grid { stroke: var(--line); stroke-width: 1; }
+  .ch-axis text { fill: var(--muted); font-size: 13px; font-family: var(--font); }
+  .ch-s0 { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+  .ch-s1 { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-dasharray: 7 4; stroke-linejoin: round; }
+  .ch-guide { stroke: var(--muted); stroke-dasharray: 3 3; }
+  .ch-dot0 { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+  .ch-dot1 { fill: var(--ink); stroke: var(--panel); stroke-width: 2; }
+  .ch-legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0 0; font-size: .9rem; }
+  .sw { display: inline-block; width: 22px; height: 0; border-top: 3px solid var(--accent); vertical-align: middle; margin-right: 6px; }
+  .sw.d { border-top: 3px dashed var(--ink); }
+  .ch-read { margin-top: 10px; padding: 8px 12px; background: var(--soft); border-radius: 8px; font-size: .92rem; overflow-wrap: anywhere; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>compute2.0</h1>
+    <p>คำนวณสูตรฟิสิกส์ ม.4 ระบบล้อ มอเตอร์ และอาวุธหมุนของหุ่นยนต์</p>
+  </div>
+  <button class="theme-btn" id="themeBtn" type="button">สลับโหมดสี</button>
+</header>
+
+<main>
+  <nav class="picker" aria-label="รายการสูตร">
+    <input type="search" id="search" placeholder="ค้นหาสูตร เช่น torque, ล้อ, แรง" aria-label="ค้นหาสูตร">
+    <div class="list" id="list"></div>
+  </nav>
+
+  <section class="work">
+    <div class="card" id="formCard"></div>
+    <div class="readout" id="readout" aria-live="polite">
+      <div class="head"><span>ผลลัพธ์</span></div>
+      <div class="placeholder">กรอกค่าแล้วกด “คำนวณ”</div>
+    </div>
+    <div class="card chart" id="chartCard" hidden>
+      <h2>กราฟเทียบ RPM กับแรง</h2>
+      <p class="formula" id="chartNote"></p>
+      <div id="chartBody"></div>
+      <div class="ch-legend" id="chartLegend"></div>
+      <div class="ch-read" id="chartRead"></div>
+    </div>
+    <div class="card" id="matCard" hidden>
+      <h2>ตารางสัมประสิทธิ์แรงเสียดทาน</h2>
+      <p class="formula">กดที่แถวเพื่อเลือกวัสดุหรือใส่ค่า μ ให้อัตโนมัติ</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>วัสดุ</th><th class="n">μs (สถิต)</th><th class="n">μk (จลน์)</th></tr></thead>
+          <tbody id="matBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" id="histCard" hidden>
+      <h2>ประวัติการคำนวณ</h2>
+      <ul class="hist" id="hist"></ul>
+      <p style="margin:10px 0 0"><button class="small-link" id="clearHist" type="button">ล้างประวัติ</button></p>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- ข้อมูลวัสดุ (จาก compute20.py) ---------- */
+  var MATERIALS = [
+    ["โลหะกับโลหะ", 0.375, 0.325],
+    ["ยางกับคอนกรีต (แห้ง)", 0.9, 0.7],
+    ["ยางกับคอนกรีต (เปียก)", 0.6, 0.45],
+    ["ยางกับยาง", 1.0, 0.9],
+    ["ไม้กับไม้", 0.5, 0.2],
+    ["เหล็กกับน้ำแข็ง", 0.03, 0.02],
+    ["เทฟลอนกับเทฟลอน", 0.04, 0.04],
+    ["อะลูมิเนียมกับอะลูมิเนียม", 1.0, 1.4],
+    ["หนังกับไม้", 0.7, 0.5],
+    ["AR 210 กับไม้", 0.4, 0.2],
+    ["Mega Sumo", 0.8, 0.1]
+  ];
+  var G = 9.81;
+  /* หน่วยที่เลือกได้ในช่องกรอก: [ชื่อหน่วย, ตัวคูณเป็นหน่วยฐาน] */
+  var UNITS = {
+    "m": [["mm", 0.001], ["cm", 0.01], ["m", 1]],
+    "kg": [["g", 0.001], ["kg", 1]],
+    "s": [["ms", 0.001], ["s", 1]],
+    "kg·m²": [["g·mm²", 1e-9], ["g·cm²", 1e-7], ["kg·cm²", 1e-4], ["kg·m²", 1]]
+  };
+
+  /* ---------- ฟังก์ชันช่วย ---------- */
+  function need(cond, msg) { if (!cond) throw new Error(msg); }
+  function rpmToRad(rpm) { return rpm * 2 * Math.PI / 60; }
+  function R(label, value, unit, main) { return { label: label, value: value, unit: unit || "", main: !!main }; }
+  function matOptions() { return MATERIALS.map(function (m, i) { return { value: String(i), label: m[0] }; }); }
+
+  /* ---------- สูตรทั้งหมด (พอร์ตจาก compute20.py) ---------- */
+  var FORMULAS = [
+    // 1) การเคลื่อนที่แนวเส้นตรง
+    { group: "การเคลื่อนที่แนวเส้นตรง", name: "ความเร็ว v = u + at", formula: "v = u + at",
+      fields: [{ k: "u", l: "ความเร็วต้น u", u: "m/s" }, { k: "a", l: "ความเร่ง a", u: "m/s²" }, { k: "t", l: "เวลา t", u: "s" }],
+      calc: function (v) { return [R("ความเร็วปลาย v", v.u + v.a * v.t, "m/s", true)]; } },
+    { group: "การเคลื่อนที่แนวเส้นตรง", name: "การกระจัด s = ut + ½at²", formula: "s = ut + ½at²",
+      fields: [{ k: "u", l: "ความเร็วต้น u", u: "m/s" }, { k: "t", l: "เวลา t", u: "s" }, { k: "a", l: "ความเร่ง a", u: "m/s²" }],
+      calc: function (v) { return [R("การกระจัด s", v.u * v.t + 0.5 * v.a * v.t * v.t, "m", true)]; } },
+    { group: "การเคลื่อนที่แนวเส้นตรง", name: "ความเร่ง a = (vf − vi) / t", formula: "a = (vf − vi) / t",
+      fields: [{ k: "vi", l: "ความเร็วต้น vi", u: "m/s" }, { k: "vf", l: "ความเร็วปลาย vf", u: "m/s" }, { k: "t", l: "เวลา t", u: "s" }],
+      calc: function (v) { need(v.t !== 0, "เวลา t ต้องไม่เป็นศูนย์"); return [R("ความเร่ง a", (v.vf - v.vi) / v.t, "m/s²", true)]; } },
+
+    // 2-3) นิวตัน งาน พลังงาน โมเมนตัม
+    { group: "แรง งาน พลังงาน", name: "แรง F = ma", formula: "F = ma",
+      fields: [{ k: "m", l: "มวล m", u: "kg" }, { k: "a", l: "ความเร่ง a", u: "m/s²" }],
+      calc: function (v) { return [R("แรง F", v.m * v.a, "N", true)]; } },
+    { group: "แรง งาน พลังงาน", name: "พลังงานจลน์ Ek = ½mv²", formula: "Ek = ½mv²",
+      fields: [{ k: "m", l: "มวล m", u: "kg" }, { k: "v", l: "ความเร็ว v", u: "m/s" }],
+      calc: function (v) { return [R("พลังงานจลน์ Ek", 0.5 * v.m * v.v * v.v, "J", true)]; } },
+    { group: "แรง งาน พลังงาน", name: "พลังงานศักย์ Ep = mgh", formula: "Ep = mgh",
+      fields: [{ k: "m", l: "มวล m", u: "kg" }, { k: "g", l: "ความเร่งโน้มถ่วง g", u: "m/s²", d: G }, { k: "h", l: "ความสูง h", u: "m" }],
+      calc: function (v) { return [R("พลังงานศักย์ Ep", v.m * v.g * v.h, "J", true)]; } },
+    { group: "แรง งาน พลังงาน", name: "โมเมนตัม p = mv", formula: "p = mv",
+      fields: [{ k: "m", l: "มวล m", u: "kg" }, { k: "v", l: "ความเร็ว v", u: "m/s" }],
+      calc: function (v) { return [R("โมเมนตัม p", v.m * v.v, "kg·m/s", true)]; } },
+    { group: "แรง งาน พลังงาน", name: "แรงสู่ศูนย์กลาง Fc = mv²/r", formula: "Fc = mv² / r",
+      fields: [{ k: "m", l: "มวล m", u: "kg" }, { k: "v", l: "ความเร็ว v", u: "m/s" }, { k: "r", l: "รัศมี r", u: "m" }],
+      calc: function (v) { need(v.r !== 0, "รัศมี r ต้องไม่เป็นศูนย์"); return [R("แรงสู่ศูนย์กลาง Fc", v.m * v.v * v.v / v.r, "N", true)]; } },
+
+    // 6-7) คาน มอเตอร์ ล้อ
+    { group: "คาน มอเตอร์ ล้อ", name: "แรงที่ปลายคาน F = τ/L", formula: "F = τ / L",
+      fields: [{ k: "tau", l: "แรงบิด τ", u: "N·m" }, { k: "L", l: "ความยาวคาน L", u: "m" }],
+      calc: function (v) { need(v.L !== 0, "ความยาวคาน L ต้องไม่เป็นศูนย์"); return [R("แรงที่ปลายคานยกได้", v.tau / v.L, "N", true)]; } },
+    { group: "คาน มอเตอร์ ล้อ", name: "มอเตอร์ KV → RPM", formula: "RPM = (Kv × V) / Gear ratio",
+      fields: [{ k: "kv", l: "ค่า Kv", u: "RPM/V" }, { k: "v", l: "แรงดันไฟ V", u: "V" }, { k: "g", l: "อัตราทด Gear ratio", u: "" }],
+      calc: function (v) { need(v.g !== 0, "Gear ratio ต้องไม่เป็นศูนย์"); return [R("ความเร็วรอบ", v.kv * v.v / v.g, "RPM", true)]; } },
+    { group: "คาน มอเตอร์ ล้อ", name: "มอเตอร์ KV → Torque", formula: "τ ≈ (W / (Kv × V × 2π/60)) × Gear ratio",
+      fields: [{ k: "kv", l: "ค่า Kv", u: "RPM/V" }, { k: "w", l: "กำลังไฟฟ้าเข้า W_input", u: "W" }, { k: "v", l: "แรงดันไฟ V", u: "V" }, { k: "g", l: "อัตราทด Gear ratio", u: "" }],
+      calc: function (v) {
+        var den = v.kv * v.v * (2 * Math.PI / 60);
+        need(den !== 0, "Kv และ V ต้องไม่เป็นศูนย์");
+        return [R("แรงบิด", (v.w / den) * v.g, "N·m", true)];
+      } },
+    { group: "คาน มอเตอร์ ล้อ", name: "ความเร็วเชิงเส้นจาก RPM", formula: "v = 2πr·RPM / 60",
+      fields: [{ k: "d", l: "เส้นผ่านศูนย์กลางล้อ", u: "m" }, { k: "rpm", l: "ความเร็วรอบ", u: "RPM" }],
+      calc: function (v) { return [R("ความเร็วเชิงเส้นของล้อ", 2 * Math.PI * (v.d / 2) * v.rpm / 60, "m/s", true)]; } },
+    { group: "คาน มอเตอร์ ล้อ", name: "แรงที่ล้อ = Torque / Radius", formula: "F = τ / r",
+      fields: [{ k: "d", l: "เส้นผ่านศูนย์กลางล้อ", u: "m" }, { k: "tq", l: "แรงบิดมอเตอร์", u: "N·m" }],
+      calc: function (v) { need(v.d !== 0, "เส้นผ่านศูนย์กลางล้อต้องไม่เป็นศูนย์"); return [R("แรงที่ล้อ", v.tq / (v.d / 2), "N", true)]; } },
+    { group: "คาน มอเตอร์ ล้อ", name: "แรงรวมของมอเตอร์", formula: "แรงรวม = จำนวนมอเตอร์ × แรงต่อล้อ",
+      fields: [{ k: "n", l: "จำนวนมอเตอร์", u: "ตัว" }, { k: "f", l: "แรงต่อล้อ", u: "N" }],
+      calc: function (v) { return [R("แรงรวม", v.n * v.f, "N", true)]; } },
+    { group: "คาน มอเตอร์ ล้อ", name: "รายงานความเร็วเชิงเส้นของล้อ", formula: "v = 2πr·RPM / 60",
+      fields: [{ k: "d", l: "เส้นผ่านศูนย์กลางล้อ", u: "m" }, { k: "rpm", l: "ความเร็วรอบ", u: "RPM" }],
+      calc: function (v) {
+        var s = 2 * Math.PI * (v.d / 2) * v.rpm / 60;
+        return [R("ความเร็วเชิงเส้นของล้อ", s, "m/s", true), R("เท่ากับ", s * 3.6, "km/h")];
+      } },
+    { group: "คาน มอเตอร์ ล้อ", name: "คำนวณแรงล้อเต็มรูปแบบ (เลือกวัสดุ)", formula: "เทียบแรงเสียดทานสถิต Ff = μs·m·g กับแรงส่งของมอเตอร์",
+      fields: [
+        { k: "mat", l: "วัสดุ", type: "select", options: matOptions(), d: "1" },
+        { k: "m", l: "มวลหุ่นยนต์", u: "kg" }, { k: "d", l: "เส้นผ่านศูนย์กลางล้อ", u: "m" },
+        { k: "g", l: "ความเร่งโน้มถ่วง g", u: "m/s²", d: G },
+        { k: "tq", l: "แรงบิดมอเตอร์ต่อตัว", u: "N·m" }, { k: "n", l: "จำนวนมอเตอร์", u: "ตัว" }
+      ],
+      calc: function (v) {
+        need(v.d !== 0, "เส้นผ่านศูนย์กลางล้อต้องไม่เป็นศูนย์");
+        var mat = MATERIALS[Number(v.mat)];
+        var ff = mat[1] * v.m * v.g;
+        var wf = v.tq / (v.d / 2);
+        var total = v.n * wf;
+        var rows = [
+          R("วัสดุ", mat[0], ""),
+          R("μs (สถิต)", mat[1], ""),
+          R("แรงเสียดทาน", ff, "N"),
+          R("แรงส่งของมอเตอร์ต่อล้อ", wf, "N"),
+          R("แรงส่งของมอเตอร์ทั้งหมด", total, "N", true)
+        ];
+        rows.push(R("สถานะ", total > ff ? "แรงส่ง > แรงเสียดทาน (ล้อมีโอกาสสลิป)" : "แรงส่ง ≤ แรงเสียดทาน (ล้อยึดเกาะ)", ""));
+        return rows;
+      } },
+    { group: "แรงเสียดทาน", name: "แรงเสียดทาน Ff = μmg", formula: "Ff = μ·m·g",
+      note: "เลือกวัสดุเพื่อเติมค่า μ อัตโนมัติ หรือพิมพ์ค่าเอง",
+      fields: [
+        { k: "m", l: "มวล", u: "kg" },
+        { k: "mu", l: "สัมประสิทธิ์แรงเสียดทาน μ", u: "", muFill: true },
+        { k: "g", l: "ความเร่งโน้มถ่วง g", u: "m/s²", d: G }
+      ],
+      calc: function (v) { return [R("แรงเสียดทาน Ff", v.mu * v.m * v.g, "N", true)]; } },
+
+    // 8) อาวุธหมุน
+    { group: "อาวุธหมุน", name: "พลังงานจลน์ของอาวุธหมุน", formula: "Ek = ½Iω²,  τ = IωΩ sinθ,  F = τ / r",
+      note: "มุม θ ระหว่างแกนหมุนกับแกนการหมุนตัว ใช้ 90° (sin θ = 1)",
+      fields: [
+        { k: "rpm", l: "ความเร็วรอบอาวุธ", u: "RPM" },
+        { k: "I", l: "โมเมนต์ความเฉื่อย I", u: "kg·m²" },
+        { k: "om", l: "ความเร็วในการหมุนตัว Ω (Precession rate)", u: "rad/s" },
+        { k: "r", l: "ระยะห่างจากศูนย์หมุน (อาวุธ → ล้อข้างใดข้างหนึ่ง)", u: "m" }
+      ],
+      calc: function (v) {
+        need(v.rpm >= 0, "RPM ต้องมากกว่าหรือเท่ากับ 0");
+        need(v.I > 0, "I ต้องมากกว่า 0");
+        need(v.r > 0, "Lever arm ต้องมากกว่า 0");
+        var w = rpmToRad(v.rpm);
+        var tq = v.I * w * v.om;
+        return [
+          R("พลังงานจลน์ของใบตี", 0.5 * v.I * w * w, "J", true),
+          R("ความเร็วเชิงมุม ω", w, "rad/s"),
+          R("Gyroscopic torque", tq, "N·m"),
+          R("Gyroscopic force", tq / v.r, "N")
+        ];
+      } },
+    { group: "อาวุธหมุน", name: "Torque ของอาวุธหมุน (รอบตก)", formula: "τ_brake = |ΔL| / Δt,  τ_gyro = IωΩ sinθ",
+      note: "แรงบิดเบรกเป็นค่าเฉลี่ยตลอดช่วงเวลา Δt ที่รอบตก ส่วน gyroscopic torque ใช้ ω ก่อนชน และมุม 90°",
+      fields: [
+        { k: "r1", l: "RPM ต้น", u: "RPM" }, { k: "r2", l: "RPM ปลาย", u: "RPM" },
+        { k: "I", l: "โมเมนต์ความเฉื่อย I", u: "kg·m²" },
+        { k: "dt", l: "เวลาที่รอบตก Δt", u: "s" },
+        { k: "om", l: "Precession rate Ω", u: "rad/s" },
+        { k: "r", l: "Lever arm r", u: "m" }
+      ],
+      calc: function (v) {
+        need(v.I > 0, "I ต้องมากกว่า 0");
+        need(v.dt > 0, "Braking time ต้องมากกว่า 0");
+        need(v.r > 0, "Lever arm ต้องมากกว่า 0");
+        var w1 = rpmToRad(v.r1), w2 = rpmToRad(v.r2);
+        var dL = v.I * w2 - v.I * w1;
+        var bt = Math.abs(dL) / v.dt;
+        var gt = v.I * w1 * v.om * Math.sin(Math.PI / 2);
+        return [
+          R("Braking torque", bt, "N·m", true),
+          R("Braking force", bt / v.r, "N"),
+          R("Gyroscopic torque", gt, "N·m"),
+          R("Gyroscopic force", gt / v.r, "N"),
+          R("ω ต้น", w1, "rad/s"),
+          R("ω ปลาย", w2, "rad/s"),
+          R("ΔL", dL, "kg·m²/s")
+        ];
+      } },
+    { group: "อาวุธหมุน", name: "ระยะก่อนใบตีครั้งถัดไป", formula: "ระยะ = 60·Vb / (RPM หลังชน × จำนวนใบตี)",
+      note: "RPM หลังชน = RPM ก่อนชน × เปอร์เซ็นต์ที่เหลือ",
+      fields: [
+        { k: "vb", l: "ความเร็วเข้าประทะ Vb", u: "m/s" },
+        { k: "keep", l: "RPM ที่เหลือหลังชน", u: "%", d: 100 },
+        { k: "rpm", l: "RPM อาวุธก่อนชน", u: "RPM" },
+        { k: "z", l: "จำนวนใบตี", u: "ใบ" }
+      ],
+      calc: function (v) {
+        var after = v.rpm * v.keep / 100;
+        need(after !== 0 && v.z !== 0, "RPM หลังชนและจำนวนใบตีต้องไม่เป็นศูนย์");
+        return [
+          R("ระยะการตีครั้งที่ 2", 60 * v.vb / (after * v.z) * 1000, "mm", true),
+          R("RPM หลังชน", after, "RPM")
+        ];
+      } }
+  ];
+
+  FORMULAS.push({ group: "แรงขับเทียบ RPM", name: "แรงขับของล้อเทียบ RPM (กำลังคงที่)", formula: "τ = P / ω,  F = n·τ / r",
+    note: "สมมติมอเตอร์ส่งกำลังคงที่ที่ P (ค่าอุดมคติ ไม่รวมประสิทธิภาพ) แรงขับจึงลดลงเมื่อ RPM สูงขึ้น",
+    fields: [
+      { k: "P", l: "กำลังเชิงกลต่อมอเตอร์ P", u: "W" },
+      { k: "d", l: "เส้นผ่านศูนย์กลางล้อ", u: "m" },
+      { k: "n", l: "จำนวนมอเตอร์", u: "ตัว", d: 1 },
+      { k: "rpm", l: "ความเร็วรอบล้อ", u: "RPM" }
+    ],
+    calc: function (v) {
+      need(v.rpm > 0, "RPM ต้องมากกว่า 0");
+      need(v.d > 0, "เส้นผ่านศูนย์กลางล้อต้องมากกว่า 0");
+      var w = rpmToRad(v.rpm);
+      var tq = v.P / w;
+      return [
+        R("แรงขับรวม", v.n * tq / (v.d / 2), "N", true),
+        R("แรงบิดต่อมอเตอร์", tq, "N·m"),
+        R("ความเร็วเชิงมุม ω", w, "rad/s"),
+        R("ความเร็วเชิงเส้นของล้อ", w * (v.d / 2), "m/s")
+      ];
+    } });
+
+  /* ข้อที่มีกราฟเทียบ RPM กับแรง */
+  FORMULAS.forEach(function (f) {
+    if (f.name === "พลังงานจลน์ของอาวุธหมุน") {
+      f.sweep = { k: "rpm", lo: 0, hi: 1.5, out: ["Gyroscopic force"], xLabel: "RPM อาวุธ", note: "Gyroscopic force เปลี่ยนตามรอบอาวุธ เมื่อ I, Ω และ r คงที่ตามที่กรอก" };
+    } else if (f.name === "Torque ของอาวุธหมุน (รอบตก)") {
+      f.sweep = { k: "r1", lo: 0, hi: 1.5, out: ["Braking force", "Gyroscopic force"], xLabel: "RPM ต้น", note: "เปลี่ยน RPM ต้น โดยให้ RPM ปลาย, Δt, I, Ω และ r คงที่ตามที่กรอก" };
+    } else if (f.name === "แรงขับของล้อเทียบ RPM (กำลังคงที่)") {
+      f.sweep = { k: "rpm", lo: 0.1, hi: 2, out: ["แรงขับรวม"], xLabel: "RPM ล้อ", note: "แรงขับรวมของมอเตอร์ทั้งหมดที่กำลังคงที่ ช่วง 10%–200% ของ RPM ที่กรอก" };
+    }
+  });
+
+  /* ---------- สถานะ ---------- */
+  var current = 0;
+  var lastRows = null;
+  var HIST_KEY = "compute20_history";
+
+  var $list = document.getElementById("list");
+  var $search = document.getElementById("search");
+  var $form = document.getElementById("formCard");
+  var $out = document.getElementById("readout");
+  var $matCard = document.getElementById("matCard");
+  var $matBody = document.getElementById("matBody");
+  var $histCard = document.getElementById("histCard");
+  var $hist = document.getElementById("hist");
+  var $chart = document.getElementById("chartCard");
+  var $chartBody = document.getElementById("chartBody");
+  var $chartNote = document.getElementById("chartNote");
+  var $chartLegend = document.getElementById("chartLegend");
+  var $chartRead = document.getElementById("chartRead");
+
+  function fmt(x) {
+    if (typeof x !== "number") return String(x);
+    if (Math.abs(x) >= 1e9 || (x !== 0 && Math.abs(x) < 1e-4)) return x.toExponential(4);
+    return x.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  /* ---------- รายการสูตร ---------- */
+  function renderList() {
+    var q = $search.value.trim().toLowerCase();
+    $list.textContent = "";
+    var lastGroup = null, shown = 0;
+    FORMULAS.forEach(function (f, i) {
+      var hay = (f.name + " " + f.formula + " " + f.group).toLowerCase();
+      if (q && hay.indexOf(q) === -1) return;
+      if (f.group !== lastGroup) { $list.appendChild(el("p", "group-title", f.group)); lastGroup = f.group; }
+      var b = el("button", "item");
+      b.type = "button";
+      if (i === current) b.setAttribute("aria-current", "true");
+      b.appendChild(el("span", "no", String(i + 1)));
+      b.appendChild(el("span", "", f.name));
+      b.addEventListener("click", function () { select(i); });
+      $list.appendChild(b);
+      shown++;
+    });
+    if (!shown) $list.appendChild(el("div", "empty", "ไม่พบสูตรที่ค้นหา ลองใช้คำอื่น"));
+  }
+
+  /* ---------- ฟอร์ม ---------- */
+  function select(i) {
+    current = i;
+    lastRows = null;
+    renderList();
+    renderForm();
+    renderResult(null);
+    renderChart(null);
+    var usesMat = FORMULAS[i].fields.some(function (f) { return f.type === "select" || f.muFill; });
+    $matCard.hidden = !usesMat;
+  }
+
+  function renderForm() {
+    var f = FORMULAS[current];
+    $form.textContent = "";
+    $form.appendChild(el("h2", "", (current + 1) + ". " + f.name));
+    $form.appendChild(el("p", "formula", f.formula));
+    if (f.note) $form.appendChild(el("p", "note", f.note));
+
+    var grid = el("div", "fields");
+    f.fields.forEach(function (fd) {
+      var lab = el("label", "f");
+      lab.appendChild(el("span", "lab", fd.l + (fd.u && !UNITS[fd.u] ? " (" + fd.u + ")" : "")));
+      var inp;
+      if (fd.type === "select") {
+        inp = document.createElement("select");
+        fd.options.forEach(function (o) {
+          var op = document.createElement("option");
+          op.value = o.value; op.textContent = o.label;
+          inp.appendChild(op);
+        });
+        inp.value = fd.d;
+      } else {
+        inp = document.createElement("input");
+        inp.type = "number"; inp.step = "any"; inp.inputMode = "decimal";
+        if (fd.d != null) inp.value = fd.d;
+      }
+      inp.className = "inp";
+      inp.id = "in_" + fd.k;
+      inp.dataset.k = fd.k;
+      inp.addEventListener("keydown", function (e) { if (e.key === "Enter") calculate(); });
+      if (UNITS[fd.u] && fd.type !== "select") {
+        var line = el("span", "inline");
+        var us = document.createElement("select");
+        us.className = "inp unit";
+        us.id = "un_" + fd.k;
+        us.setAttribute("aria-label", "หน่วยของ " + fd.l);
+        UNITS[fd.u].forEach(function (o) {
+          var op = document.createElement("option");
+          op.value = String(o[1]); op.textContent = o[0];
+          us.appendChild(op);
+        });
+        us.value = "1";
+        line.appendChild(inp); line.appendChild(us);
+        lab.appendChild(line);
+      } else {
+        lab.appendChild(inp);
+      }
+      grid.appendChild(lab);
+    });
+    $form.appendChild(grid);
+
+    var act = el("div", "actions");
+    var go = el("button", "btn primary", "คำนวณ"); go.type = "button"; go.addEventListener("click", calculate);
+    var rs = el("button", "btn", "ล้างข้อมูล"); rs.type = "button"; rs.addEventListener("click", function () { select(current); });
+    act.appendChild(go); act.appendChild(rs);
+    $form.appendChild(act);
+  }
+
+  /* ---------- คำนวณ ---------- */
+  function readValues() {
+    var f = FORMULAS[current], v = {};
+    f.fields.forEach(function (fd) {
+      var inp = document.getElementById("in_" + fd.k);
+      if (fd.type === "select") { v[fd.k] = inp.value; return; }
+      need(inp.value.trim() !== "", "กรุณากรอก “" + fd.l + "”");
+      var n = Number(inp.value);
+      need(isFinite(n), "“" + fd.l + "” ต้องเป็นตัวเลข");
+      var usel = document.getElementById("un_" + fd.k);
+      v[fd.k] = usel ? n * Number(usel.value) : n;
+    });
+    return v;
+  }
+
+  function calculate() {
+    try {
+      var f = FORMULAS[current];
+      var vals = readValues();
+      var rows = f.calc(vals);
+      rows.forEach(function (r) {
+        need(typeof r.value !== "number" || isFinite(r.value),
+          "คำนวณไม่ได้: ผลเป็นค่าไม่ใช่ตัวเลข (ตรวจสอบการหารด้วยศูนย์ หรือรากของค่าติดลบ)");
+      });
+      lastRows = rows;
+      renderResult(rows);
+      renderChart(f, vals);
+      pushHistory(f.name, rows[0]);
+    } catch (e) {
+      lastRows = null;
+      renderChart(null);
+      renderResult(null, e.message);
+    }
+  }
+
+  function renderResult(rows, err) {
+    $out.textContent = "";
+    var head = el("div", "head");
+    head.appendChild(el("span", "", "ผลลัพธ์"));
+    if (rows) {
+      var cp = el("button", "copy", "คัดลอก"); cp.type = "button";
+      cp.addEventListener("click", function () { copyResult(cp); });
+      head.appendChild(cp);
+    }
+    $out.appendChild(head);
+    if (err) { $out.appendChild(el("div", "error", err)); return; }
+    if (!rows) { $out.appendChild(el("div", "placeholder", "กรอกค่าแล้วกด “คำนวณ”")); return; }
+    var wrap = el("div", "rows");
+    rows.forEach(function (r) {
+      var row = el("div", "row" + (r.main ? " main" : ""));
+      row.appendChild(el("span", "k", r.label));
+      var val = el("span", "v", "");
+      var num = el("span", "", fmt(r.value));
+      val.appendChild(num);
+      var grp = r.unit ? unitGroup(r.unit) : null;
+      if (grp) {
+        var sel = document.createElement("select");
+        sel.className = "runit";
+        sel.setAttribute("aria-label", "เปลี่ยนหน่วยของผลลัพธ์");
+        grp.opts.forEach(function (o, idx) {
+          var op = document.createElement("option");
+          op.value = String(idx); op.textContent = o[0];
+          sel.appendChild(op);
+        });
+        sel.value = String(grp.cur);
+        sel.addEventListener("change", function () {
+          num.textContent = fmt(r.value * grp.opts[grp.cur][1] / grp.opts[Number(sel.value)][1]);
+        });
+        val.appendChild(sel);
+      } else if (r.unit) {
+        val.appendChild(el("small", "", r.unit));
+      }
+      row.appendChild(val);
+      wrap.appendChild(row);
+    });
+    $out.appendChild(wrap);
+  }
+
+  function copyResult(btn) {
+    if (!lastRows) return;
+    var text = FORMULAS[current].name + "\n" + lastRows.map(function (r) {
+      return r.label + ": " + fmt(r.value) + (r.unit ? " " + r.unit : "");
+    }).join("\n");
+    function done() { btn.textContent = "คัดลอกแล้ว"; setTimeout(function () { btn.textContent = "คัดลอก"; }, 1400); }
+    try {
+      navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+    } catch (e) { fallbackCopy(text); done(); }
+  }
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  /* ---------- หน่วยและกราฟ ---------- */
+  function unitGroup(unit) {
+    for (var key in UNITS) {
+      for (var i = 0; i < UNITS[key].length; i++) {
+        if (UNITS[key][i][0] === unit) return { opts: UNITS[key], cur: i };
+      }
+    }
+    return null;
+  }
+
+  function niceStep(range, n) {
+    var raw = range / n, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+  }
+
+  function renderChart(f, vals) {
+    var s = f && f.sweep;
+    var x0 = s && vals ? vals[s.k] : 0;
+    if (!s || !(x0 > 0)) { $chart.hidden = true; return; }
+
+    function ysAt(nv) {
+      var rows = f.calc(nv);
+      return s.out.map(function (lb) {
+        var r = rows.filter(function (q) { return q.label === lb; })[0];
+        return r ? r.value : NaN;
+      });
+    }
+
+    var N = 40, lo = x0 * s.lo, hi = x0 * s.hi, pts = [], i, k;
+    for (i = 0; i <= N; i++) {
+      var x = lo + (hi - lo) * i / N, nv = {};
+      for (k in vals) nv[k] = vals[k];
+      nv[s.k] = x;
+      try { var yy = ysAt(nv); if (yy.every(isFinite)) pts.push({ x: x, ys: yy }); } catch (e) {}
+    }
+    var cur = null;
+    try { cur = ysAt(vals); } catch (e) {}
+    if (pts.length < 2 || !cur || !cur.every(isFinite)) { $chart.hidden = true; return; }
+
+    var ymax = 0, ymin = 0;
+    pts.forEach(function (p) { p.ys.forEach(function (y) { ymax = Math.max(ymax, y); ymin = Math.min(ymin, y); }); });
+    if (ymax === ymin) ymax = ymin + 1;
+    var ystep = niceStep(ymax - ymin, 5);
+    var ya = Math.floor(ymin / ystep) * ystep, yb = Math.ceil(ymax / ystep) * ystep;
+    var xstep = niceStep(hi - lo, 5), xa = lo, xb = hi;
+
+    var VW = 480, VH = 300, L = 58, RR = 14, T = 14, B = 42;
+    function X(v) { return L + (v - xa) / (xb - xa) * (VW - L - RR); }
+    function Y(v) { return T + (1 - (v - ya) / (yb - ya)) * (VH - T - B); }
+
+    var grid = "", labels = "", t;
+    for (t = ya; t <= yb + ystep / 2; t += ystep) {
+      var ty = Y(t).toFixed(1);
+      grid += '<line class="ch-grid" x1="' + L + '" x2="' + (VW - RR) + '" y1="' + ty + '" y2="' + ty + '"/>';
+      labels += '<text x="' + (L - 6) + '" y="' + (Y(t) + 4).toFixed(1) + '" text-anchor="end">' + fmt(+t.toPrecision(6)) + '</text>';
+    }
+    for (t = Math.ceil(xa / xstep) * xstep; t <= xb + xstep * 1e-6; t += xstep) {
+      var tx = X(t).toFixed(1);
+      grid += '<line class="ch-grid" x1="' + tx + '" x2="' + tx + '" y1="' + (VH - B) + '" y2="' + (VH - B + 5) + '"/>';
+      labels += '<text x="' + tx + '" y="' + (VH - B + 20) + '" text-anchor="middle">' + fmt(+t.toPrecision(6)) + '</text>';
+    }
+    labels += '<text x="' + (L + (VW - L - RR) / 2) + '" y="' + (VH - 6) + '" text-anchor="middle">' + s.xLabel + ' (RPM)</text>';
+
+    var paths = "", dots = "", hov = "";
+    s.out.forEach(function (lb, j) {
+      var d = pts.map(function (p, idx) { return (idx ? "L" : "M") + X(p.x).toFixed(1) + " " + Y(p.ys[j]).toFixed(1); }).join(" ");
+      paths += '<path class="ch-s' + j + '" d="' + d + '"/>';
+      dots += '<circle class="ch-dot' + j + '" r="6" cx="' + X(x0).toFixed(1) + '" cy="' + Y(cur[j]).toFixed(1) + '"/>';
+      hov += '<circle id="chH' + j + '" class="ch-dot' + j + '" r="4.5" style="display:none"/>';
+    });
+
+    $chartBody.innerHTML = '<svg viewBox="0 0 ' + VW + ' ' + VH + '" role="img" aria-label="กราฟแรงเทียบ RPM">' +
+      grid + '<g class="ch-axis">' + labels + '</g>' + paths +
+      '<line id="chGuide" class="ch-guide" y1="' + T + '" y2="' + (VH - B) + '" style="display:none"/>' +
+      dots + hov + '</svg>';
+
+    $chartNote.textContent = s.note + " (แกนตั้ง: แรง หน่วย N) จุดวงกลมใหญ่คือค่าที่คุณกรอก";
+    $chartLegend.innerHTML = s.out.map(function (lb, j) {
+      return '<span><span class="sw' + (j ? ' d' : '') + '"></span>' + lb + ' (N)</span>';
+    }).join("");
+
+    function txt(xv, ysv) {
+      return s.xLabel + " " + fmt(xv) + " → " + s.out.map(function (lb, j) { return lb + " " + fmt(ysv[j]) + " N"; }).join(" · ");
+    }
+    var svg = $chartBody.querySelector("svg");
+    var guide = svg.querySelector("#chGuide");
+    function reset() {
+      guide.style.display = "none";
+      s.out.forEach(function (lb, j) { svg.querySelector("#chH" + j).style.display = "none"; });
+      $chartRead.textContent = "ค่าที่คำนวณ: " + txt(x0, cur) + "  (เลื่อนเมาส์หรือแตะบนกราฟเพื่ออ่านค่า)";
+    }
+    function showAt(idx) {
+      var p = pts[idx];
+      guide.setAttribute("x1", X(p.x).toFixed(1));
+      guide.setAttribute("x2", X(p.x).toFixed(1));
+      guide.style.display = "";
+      s.out.forEach(function (lb, j) {
+        var h = svg.querySelector("#chH" + j);
+        h.setAttribute("cx", X(p.x).toFixed(1));
+        h.setAttribute("cy", Y(p.ys[j]).toFixed(1));
+        h.style.display = "";
+      });
+      $chartRead.textContent = txt(p.x, p.ys);
+    }
+    function onMove(e) {
+      var rect = svg.getBoundingClientRect();
+      var px = (e.clientX - rect.left) / rect.width * VW;
+      var xv = xa + (px - L) / (VW - L - RR) * (xb - xa);
+      var best = 0, bd = Infinity;
+      pts.forEach(function (p, idx) { var dd = Math.abs(p.x - xv); if (dd < bd) { bd = dd; best = idx; } });
+      showAt(best);
+    }
+    svg.addEventListener("pointermove", onMove);
+    svg.addEventListener("pointerdown", onMove);
+    svg.addEventListener("pointerleave", reset);
+    reset();
+    $chart.hidden = false;
+  }
+
+  /* ---------- ตารางวัสดุ ---------- */
+  function renderMaterials() {
+    MATERIALS.forEach(function (m, i) {
+      var tr = el("tr", "mat");
+      tr.tabIndex = 0;
+      tr.appendChild(el("td", "", m[0]));
+      tr.appendChild(el("td", "n", String(m[1])));
+      tr.appendChild(el("td", "n", String(m[2])));
+      function pick() {
+        var sel = document.querySelector('select[data-k="mat"]');
+        var mu = document.getElementById("in_mu");
+        if (sel) sel.value = String(i);
+        if (mu) mu.value = m[1];
+      }
+      tr.addEventListener("click", pick);
+      tr.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+      $matBody.appendChild(tr);
+    });
+  }
+
+  /* ---------- ประวัติ (เก็บในเบราว์เซอร์ของผู้ใช้เท่านั้น) ---------- */
+  function loadHist() {
+    try { var h = JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); return Array.isArray(h) ? h : []; }
+    catch (e) { return []; }
+  }
+  function saveHist(h) { try { localStorage.setItem(HIST_KEY, JSON.stringify(h)); } catch (e) {} }
+  var hist = loadHist();
+  function pushHistory(name, row) {
+    hist.unshift({ n: name, v: row.label + " = " + fmt(row.value) + (row.unit ? " " + row.unit : "") });
+    hist = hist.slice(0, 10);
+    saveHist(hist);
+    renderHist();
+  }
+  function renderHist() {
+    $hist.textContent = "";
+    $histCard.hidden = hist.length === 0;
+    hist.forEach(function (h) {
+      var li = document.createElement("li");
+      li.appendChild(el("span", "", h.n));
+      li.appendChild(el("span", "", h.v));
+      $hist.appendChild(li);
+    });
+  }
+  document.getElementById("clearHist").addEventListener("click", function () { hist = []; saveHist(hist); renderHist(); });
+
+  /* ---------- ธีม ---------- */
+  document.getElementById("themeBtn").addEventListener("click", function () {
+    var root = document.documentElement;
+    var dark = root.getAttribute("data-theme") === "dark" ||
+      (!root.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    root.setAttribute("data-theme", dark ? "light" : "dark");
+  });
+
+  $search.addEventListener("input", renderList);
+
+  renderMaterials();
+  renderHist();
+  select(0);
+})();
+</script>
+</body>
+</html>
